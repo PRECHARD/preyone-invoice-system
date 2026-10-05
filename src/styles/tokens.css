@@ -1,0 +1,41 @@
+:root {
+  --p-ink-950: #14002e;
+  --p-ink-900: #170133;
+  --p-ink-800: #200644;
+  --p-violet-700: #300e5f;
+  --p-violet-600: #36116a;
+  --p-purple-500: #4a1064;
+  --p-plum-400: #640e5d;
+  --p-plum-500: #740e58;
+  --p-plum-600: #7a0e57;
+
+  --navy-800: #272c5e;
+  --navy-700: #122b70;
+  --line-soft: #e5e5f5;
+
+  --grad-brand: linear-gradient(
+    100deg,
+    var(--p-ink-950) 0%,
+    var(--p-ink-900) 7%,
+    var(--p-ink-800) 17%,
+    var(--p-violet-700) 28%,
+    var(--p-violet-600) 32%,
+    var(--p-purple-500) 43%,
+    var(--p-plum-400) 61%,
+    var(--p-plum-500) 77%,
+    var(--p-plum-600) 90%
+  );
+
+  --row-tint: linear-gradient(rgba(255, 255, 255, 0.57), rgba(255, 255, 255, 0.57)), var(--grad-brand);
+
+  --font-brand: 'Poppins', 'Segoe UI', sans-serif;
+
+  --ink: #241b3a;
+  --muted: #6d6786;
+  --bg-app: #f3f2f8;
+  --card: #ffffff;
+  --danger: #b3261e;
+
+  --radius: 10px;
+  --shadow-card: 0 10px 30px rgba(20, 0, 46, 0.08);
+}
