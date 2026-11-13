@@ -20,6 +20,7 @@ import {
   requireCompanyScope,
   auditLog,
 } from './auth.js';
+import { attachEntitlement, requireInvoiceModule, requireActiveSubscription, loadEntitlement } from './entitlements.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const distDir = path.join(root, 'dist');
@@ -130,6 +131,13 @@ const allowPrint = (req, res, next) => {
 
 app.get('/print/:id', allowPrint, async (req, res) => {
   try {
+    if (req.user) {
+      const ent = await loadEntitlement(req.user.portal_company_id || req.user.companyId || null);
+      if (!ent.allowed) {
+        res.status(403).type('text/plain').send(ent.error);
+        return;
+      }
+    }
     const scope = requireCompanyScope(req.user);
     const doc = await store.getDocument(req.params.id, scope);
     if (!doc) return res.status(404).send('Document not found');
@@ -139,8 +147,13 @@ app.get('/print/:id', allowPrint, async (req, res) => {
   }
 });
 
-// Everything past this line needs a valid session.
+// Everything past this line needs a valid session and the Invoice module.
 app.use('/api', requireAuth);
+app.use('/api', attachEntitlement);
+app.get('/api/entitlement', (req, res) => {
+  res.json(req.entitlement);
+});
+app.use('/api', requireInvoiceModule);
 
 app.get('/api/settings', (_req, res) => res.json(store.settings));
 app.put('/api/settings', requireRole('CEO', 'Manager'), (req, res) => res.json(store.saveSettings(req.body || {})));
@@ -212,7 +225,7 @@ app.get('/api/documents', async (req, res) => {
   }
 });
 
-app.post('/api/documents', async (req, res) => {
+app.post('/api/documents', requireActiveSubscription, async (req, res) => {
   try {
     const doc = await store.createDocument(req.body || {}, requireCompanyScope(req.user));
     auditLog(req.user, 'document_created', 'document', doc.id, `${doc.number} total=${doc.total}`);
@@ -233,7 +246,7 @@ app.get('/api/documents/:id', async (req, res) => {
   }
 });
 
-app.put('/api/documents/:id', async (req, res) => {
+app.put('/api/documents/:id', requireActiveSubscription, async (req, res) => {
   try {
     const scope = requireCompanyScope(req.user);
     const doc = await store.updateDocument(req.params.id, req.body || {}, scope);
@@ -272,7 +285,7 @@ app.get('/api/documents/:id/pdf', async (req, res) => {
   }
 });
 
-app.post('/api/documents/:id/duplicate', async (req, res) => {
+app.post('/api/documents/:id/duplicate', requireActiveSubscription, async (req, res) => {
   try {
     const doc = await store.duplicateDocument(req.params.id, requireCompanyScope(req.user));
     if (!doc) return res.status(404).json({ error: 'Document not found' });
@@ -283,7 +296,7 @@ app.post('/api/documents/:id/duplicate', async (req, res) => {
 });
 
 // Voiding is a financial action, so it stays with CEO/Manager even though Staff may draft invoices.
-app.delete('/api/documents/:id', requireRole('CEO', 'Manager'), async (req, res) => {
+app.delete('/api/documents/:id', requireRole('CEO', 'Manager'), requireActiveSubscription, async (req, res) => {
   try {
     const scope = requireCompanyScope(req.user);
     if (!(await store.deleteDocument(req.params.id, scope))) {
@@ -310,28 +323,32 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Preyone Invoice API ready on http://localhost:${PORT}`);
-  console.log(
-    process.env.NODE_ENV === 'production'
-      ? `[auth] mode=production — SSO cookie scoped to .preyone.com, Secure`
-      : `[auth] mode=${process.env.NODE_ENV || 'development'} — SSO cookie is host-only and not Secure`
-  );
-  checkDatabase()
-    .then(() => console.log('Shared Preyone database connected — sales sync with POS + admin console'))
-    .then(ensureSchema)
-    .then(() => console.log('Schema verified (pos_customers.company_id present)'))
-    .catch((e) =>
-      console.warn(
-        'WARNING: shared database unreachable. Start it with:\n' +
-          '  node scripts/dev-pos.mjs   (in the preyone-ruijie-captive-portal repo)\n' +
-          'or set DB_HOST / DB_PORT / DB_NAME / DB_USER / DB_PASSWORD env vars.\n' +
-          `  (${e.message})`
-      )
-    );
-});
+export { app };
 
-server.on('error', (err) => {
-  console.error(`Server failed to start: ${err.message}`);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== 'test') {
+  const server = app.listen(PORT, () => {
+    console.log(`Preyone Invoice API ready on http://localhost:${PORT}`);
+    console.log(
+      process.env.NODE_ENV === 'production'
+        ? `[auth] mode=production — SSO cookie scoped to .preyone.com, Secure`
+        : `[auth] mode=${process.env.NODE_ENV || 'development'} — SSO cookie is host-only and not Secure`
+    );
+    checkDatabase()
+      .then(() => console.log('Shared Preyone database connected — sales sync with POS + admin console'))
+      .then(ensureSchema)
+      .then(() => console.log('Schema verified (pos_customers.company_id present)'))
+      .catch((e) =>
+        console.warn(
+          'WARNING: shared database unreachable. Start it with:\n' +
+            '  node scripts/dev-pos.mjs   (in the preyone-ruijie-captive-portal repo)\n' +
+            'or set DB_HOST / DB_PORT / DB_NAME / DB_USER / DB_PASSWORD env vars.\n' +
+            `  (${e.message})`
+        )
+      );
+  });
+
+  server.on('error', (err) => {
+    console.error(`Server failed to start: ${err.message}`);
+    process.exit(1);
+  });
+}

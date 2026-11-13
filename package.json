@@ -1,31 +1,33 @@
 {
-    "name":  "preyone-invoice-system",
-    "version":  "1.0.0",
-    "private":  true,
-    "type":  "module",
-    "description":  "Preyone enterprise branded invoicing \u0026 quotation system",
-    "scripts":  {
-                    "dev":  "node scripts/dev.mjs",
-                    "dev:client":  "node node_modules/vite/bin/vite.js",
-                    "dev:server":  "node server/index.js",
-                    "build":  "node node_modules/vite/bin/vite.js build",
-                    "preview":  "node node_modules/vite/bin/vite.js preview",
-                    "start":  "node server/index.js"
-                },
-    "dependencies":  {
-                         "express":  "^4.19.2",
-                         "pg":  "^8.23.0",
-                         "puppeteer-core":  "^25.8.0",
-                         "react":  "^18.3.1",
-                         "react-dom":  "^18.3.1",
-                         "jsonwebtoken":  "^9.0.3",
-                         "bcryptjs":  "^3.0.3",
-                         "cookie-parser":  "^1.4.6",
-                         "express-rate-limit":  "^7.3.1"
-                     },
-    "devDependencies":  {
-                            "@vitejs/plugin-react":  "^4.3.1",
-                            "vite":  "^5.4.8"
-                        }
+  "name": "preyone-invoice-system",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Preyone enterprise branded invoicing & quotation system",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:client": "node node_modules/vite/bin/vite.js",
+    "dev:server": "node server/index.js",
+    "build": "node node_modules/vite/bin/vite.js build",
+    "preview": "node node_modules/vite/bin/vite.js preview",
+    "start": "node server/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.23.0",
+    "puppeteer-core": "^25.8.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "jsonwebtoken": "^9.0.3",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.6",
+    "express-rate-limit": "^7.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "supertest": "^7.1.4",
+    "vite": "^5.4.8",
+    "vitest": "^3.2.4"
+  }
 }
-
