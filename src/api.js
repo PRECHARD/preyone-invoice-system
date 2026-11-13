@@ -30,6 +30,7 @@ export const api = {
     login: (email, password) => req('/auth/login', { method: 'POST', body: { email, password } }),
     logout: () => req('/auth/logout', { method: 'POST' })
   },
+  entitlement: () => req('/entitlement'),
   settings: {
     get: () => req('/settings'),
     save: (patch) => req('/settings', { method: 'PUT', body: patch })

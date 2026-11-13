@@ -6,6 +6,7 @@ import Editor from './components/Editor.jsx';
 import SettingsPage from './components/Settings.jsx';
 import Clients from './components/Clients.jsx';
 import Login from './components/Login.jsx';
+import UpgradePlan from './components/UpgradePlan.jsx';
 
 const blankDoc = (type, client = null) => ({
   type,
@@ -27,6 +28,7 @@ export default function App() {
   const [settings, setSettings] = useState(null);
   const [toast, setToast] = useState(null);
   const [user, setUser] = useState(undefined);
+  const [entitlement, setEntitlement] = useState(undefined);
 
   const notify = useCallback((message, kind = 'ok') => {
     setToast({ message, kind });
@@ -50,15 +52,40 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setEntitlement(undefined);
+      return;
+    }
+    api.entitlement()
+      .then(setEntitlement)
+      .catch((e) => {
+        notify(e.message, 'error');
+        setEntitlement({
+          allowed: false,
+          canTransact: false,
+          planName: null,
+          error: e.message,
+          plans: [],
+        });
+      });
+  }, [user, notify]);
+
+  useEffect(() => {
+    if (!user || !entitlement?.allowed) return;
     api.settings
       .get()
       .then(setSettings)
       .catch((e) => notify(e.message, 'error'));
-  }, [user, notify]);
+  }, [user, entitlement, notify]);
 
   const openDoc = (doc) => setView({ name: 'editor', doc });
-  const newDoc = () => setView({ name: 'editor', doc: blankDoc('invoice') });
+  const newDoc = () => {
+    if (entitlement && !entitlement.canTransact) {
+      notify(entitlement.error || 'Renew your plan to create invoices.', 'error');
+      return;
+    }
+    setView({ name: 'editor', doc: blankDoc('invoice') });
+  };
 
   // Voiding documents, deleting clients and editing company settings are
   // CEO/Manager-only on the server; hide them rather than offer a 403.
@@ -71,6 +98,7 @@ export default function App() {
       /* cookie may already be gone; either way we return to the sign-in screen */
     }
     setSettings(null);
+    setEntitlement(undefined);
     setView({ name: 'dashboard' });
     setUser(null);
   };
@@ -86,6 +114,19 @@ export default function App() {
 
   if (user === null) {
     return <Login onSignedIn={setUser} />;
+  }
+
+  if (user && entitlement === undefined) {
+    return (
+      <div className="empty-state" style={{ paddingTop: '8rem' }}>
+        <img src="/brand/Preyone.svg" alt="Preyone" />
+        <p>Loading…</p>
+      </div>
+    );
+  }
+
+  if (user && entitlement && !entitlement.allowed) {
+    return <UpgradePlan entitlement={entitlement} onSignOut={signOut} />;
   }
 
   if (!settings) {
@@ -125,7 +166,12 @@ export default function App() {
             </button>
           )}
         </nav>
-        <button className="btn ghost" style={{ background: 'rgba(255,255,255,.14)', color: '#fff', border: 'none' }} onClick={newDoc}>
+        <button
+          className="btn ghost"
+          style={{ background: 'rgba(255,255,255,.14)', color: '#fff', border: 'none' }}
+          onClick={newDoc}
+          disabled={!entitlement?.canTransact}
+        >
           + New
         </button>
         <div className="login-user">
@@ -133,6 +179,13 @@ export default function App() {
           <button type="button" onClick={signOut}>Sign out</button>
         </div>
       </header>
+
+      {entitlement && !entitlement.canTransact && (
+        <div className="card" style={{ margin: '1rem auto', maxWidth: 960 }}>
+          <strong>{entitlement.planName || 'Your plan'}</strong>
+          <p>{entitlement.error}</p>
+        </div>
+      )}
 
       {view.name === 'dashboard' && (
         <Dashboard onOpen={openDoc} onNew={newDoc} notify={notify} canManage={canManage} />
